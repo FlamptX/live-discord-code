@@ -1,7 +1,29 @@
 const vscode = require('vscode');
 const client = require('discord-rich-presence')('876781021448769566');
+
 const startTimestamp = Date.now()
 var currentWorkspaceName = undefined;
+const imageKey = {
+	"py": "python",
+	"rs": "rust",
+	"ts": "ts",
+	"js": "js",
+	"java": "java",
+	"json": "json",
+	"c": "c",
+	"cp": "c_",
+	"cpp": "c__"
+};
+
+function getFileName(path) {
+	const split_str = path.split(`\\`);
+	return split_str[split_str.length - 1];
+}
+
+function getFileNameExt(fileName) {
+	const splitFileName = fileName.split(".");
+	return splitFileName[splitFileName.length - 1];
+}
 
 function onFileOpened(event) {
 	console.log(event);
@@ -19,21 +41,9 @@ function onFileOpened(event) {
 		client.updatePresence(data);
 		return;
 	}
-	var split_str = event.document.fileName.split(`\\`);
-	const imageKey = {
-		"py": "python",
-		"rs": "rust",
-		"ts": "ts",
-		"js": "js",
-		"java": "java",
-		"json": "json",
-		"c": "c",
-		"cp": "c_",
-		"cpp": "c__"
-	};
-	const fileName = split_str[split_str.length - 1];
-	const splitFileName = fileName.split(".");
-	const ext = splitFileName[splitFileName.length - 1];
+
+	const fileName = getFileName(event.document.fileName);
+	const ext = getFileNameExt(fileName);
 	var data = {
 		state: "In " + fileName,
 		startTimestamp: startTimestamp,
@@ -54,23 +64,38 @@ function activate(context) {
 	console.log('live-discord-code is active');
 
 	currentWorkspaceName = vscode.workspace.name;
-	if (currentWorkspaceName == undefined) {
-		client.updatePresence({
-			details: '',
-			state: 'Idle',
-			startTimestamp: startTimestamp,
-			largeImageKey: 'vscode_dark',
-			instance: true,
-		});
-	} else {
-		client.updatePresence({
-			details: currentWorkspaceName,
-			state: 'Idle',
-			startTimestamp: startTimestamp,
-			largeImageKey: 'vscode_dark',
-			instance: true,
-		});
+
+	var state = 'Idle';
+	if (vscode.window.activeTextEditor != undefined) {
+		var fileName = getFileName(vscode.window.activeTextEditor.document.fileName)
+		state = fileName;
 	}
+
+	var data = {}
+
+	if (currentWorkspaceName == undefined) {
+		data = {
+			details: '',
+			state: state,
+			startTimestamp: startTimestamp,
+			largeImageKey: 'vscode_dark',
+			instance: true,
+		};
+	} else {
+		data = {
+			details: currentWorkspaceName,
+			state: state,
+			startTimestamp: startTimestamp,
+			largeImageKey: 'vscode_dark',
+			instance: true,
+		};
+	}
+
+	if (state != 'Idle') {
+		data['smallImageKey'] = imageKey[getFileNameExt(fileName)];
+	}
+	client.updatePresence(data);
+
 	vscode.window.onDidChangeActiveTextEditor(onFileOpened);
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with  registerCommand
